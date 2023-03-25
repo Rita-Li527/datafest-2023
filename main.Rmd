@@ -1,0 +1,112 @@
+---
+title: "main"
+author: "Rita Li"
+date: "2023-03-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE}
+library(dbplyr)
+library(tidyverse)
+library(lubridate)
+library(readr)
+library(tidyr)
+
+library(dplyr)
+library(broom)
+library(ggplot2)
+library(stringr)
+library(splines)
+library(astsa)
+
+library(rjson)
+library(sf)
+library(rgdal)
+
+library(zoo)
+```
+
+```{r}
+questios <- read_csv("data/questions.csv")
+cliet <- read_csv("data/clients.csv")
+attorey <- read_csv("data/attorneys.csv")
+categories <- read_csv("data/categories.csv")
+sucatogories <- read_csv("data/subcategories.csv")
+```
+
+# combine datasets
+
+```{r, fig.width=10,fig.height=5}
+questios %>% 
+ count(StateAbbr,Category) %>% 
+ggplot(aes(fill=Category, y=n, x=StateAbbr)) + 
+    geom_bar(position="fill", stat="identity")
+```
+
+
+```{r}
+cliet %>% 
+  mutate(date = as.Date(CreatedUtc)) %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year,month) %>% 
+  summarise(number = n(),.groups = "drop") %>% 
+  mutate(date = year + (month-1)/12,
+         number = cumsum(number)) %>% 
+  ggplot(aes(x = date, y = number))+
+  geom_line()
+```
+
+
+```{r}
+attorey %>%
+  mutate(date = as.Date(CreatedUtc)) %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year,month) %>% 
+  summarise(number = n(),.groups = "drop") %>% 
+  mutate(date = year + (month-1)/12,
+         number = cumsum(number)) %>% 
+  ggplot(aes(x = date, y = number))+
+  geom_line()
+```
+
+
+```{r}
+questios %>% 
+  mutate(date = as.Date(AskedOnUtc)) %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year,month) %>% 
+  summarise(number = n()) %>% 
+  mutate(date = year + (month-1)/12) %>% 
+  ggplot(aes(x = date, y = number))+
+  geom_line()
+  
+  
+  mutate(day = day(`AskedOnUtc`),
+         month = month(`AskedOnUtc`),
+         year = year(`AskedOnUtc`)) %>% 
+  mutate(fake_date = year + (month-1)/12 + )
+
+```
+
+
+```{r}
+qposts <- read_csv('data/questionposts.csv')
+
+qposts <- qposts %>% 
+  mutate(DateTime = str_extract_all(CreatedUtc,'(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2}):(\\d{2}):(\\d{2})')) %>%
+  mutate(ExtraText = str_replace_all(CreatedUtc,'(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2}):(\\d{2}):(\\d{2})','')) %>% 
+  mutate(NewPostText = paste0(PostText,ExtraText)) %>% 
+  mutate(DateTime = paste0(DateTime)) %>% 
+  select(Id,StateAbbr,QuestionUno,NewPostText,DateTime) 
+```
+```{r}
+first_post <- qposts %>% 
+  mutate(date = as.POSIXct(DateTime,format = "%Y-%m-%d %H:%M:%S")) %>% 
+  group_by(QuestionUno) %>% 
+  filter(row_number()==1)
+```
+
