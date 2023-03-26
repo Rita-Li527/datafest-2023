@@ -7,14 +7,21 @@ library (raster)
 library(dplyr)
 library(sf)
 library(tidyverse)
-library(plotly)
 library(lubridate)
+library(wordcloud)
+library(tm)
+library(memoise)
 
 
 #load data
-books <- list("A Mid Summer Night's Dream" = "summer",
-               "The Merchant of Venice" = "merchant",
-               "Romeo and Juliet" = "romeo")
+
+
+client<- read_csv("word_all_client_questions.csv")
+
+lawyer<- read_csv("word_all_attorney_respond.csv")
+
+#get the choice for the drop down list
+
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
@@ -33,21 +40,29 @@ ui <- dashboardPage(
       tabItem("word_cloud",
               fluidRow(
                 # drop down list(add interactivity):set ID, add lable feature, a vector with possible choices
-                box(
-                  selectInput("selection", "Choose a book:",
-                              choices = books),
-                  textOutput("descrp"),
-                  width = 4
+               
+              box(
+                selectInput("selection", "Choose a state:",
+                            choices =c(unique(client$StateAbbr))),
+                width = 4,
+                sliderInput(
+                  "max",
+                  "Maximum Number of Words:",
+                  min = 1,
+                  max = 300,
+                  value = 100
                 ),
-                #action button
-                box(
-                  actionButton("update", "Change"),
-                  ),
-                  width = 4
-                ),
-              box(sliderInput("max",
-                              "Maximum Number of Words:",
-                              min = 1,  max = 300,  value = 100))),
+                sliderInput(
+                  "freq",
+                  "Minimum Frequency:",
+                  min = 1,
+                  max = 50,
+                  value = 15
+                )
+              ),
+            box(plotOutput("word_cloud_plot"), width= 8)
+     
+      )), 
       tabItem("other_plots",
               fluidPage(h1("Cars"),
                         # add data table item
@@ -59,14 +74,29 @@ ui <- dashboardPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  #render the correlation plot with the iris dataset
-  output$correlation_plot <- renderPlot({
-    #make the dropdown list the input into the plot function
-    plot(iris$Sepal.Length,iris[[input$features]],
-         xlab = "Sepal length", ylab = "Feature")
-  })
-  #render the car table, just put in the data name
-  output$carstable <- renderDataTable(mtcars)
+
+client_state<-reactive({client %>%
+  filter(StateAbbr== input$selection)})
+
+
+
+output$word_cloud_plot <- renderPlot({
+  wordcloud(
+    client_state()$word,
+    # column of words
+    client_state()$n,
+    # column of frequencies
+    scale = c(5, 0.2),
+    # range of font sizes of words
+    min.freq = input$freq,
+    max.words = input$max,
+    # show the 200 most frequent words
+    # random.order=FALSE,             # position the most popular words first
+    colors = brewer.pal(8, "Dark2")
+  )
+})
+
+
 }
 
 # Run the application 

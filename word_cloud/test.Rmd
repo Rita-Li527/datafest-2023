@@ -1,0 +1,52 @@
+---
+title: "word_cloud_test"
+author: "Jenny Li"
+date: "2023-03-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(shiny)
+library(shinydashboard)
+library(DT)
+library(shinyWidgets)
+library(rgdal)
+library (raster)
+library(dplyr)
+library(sf)
+library(tidyverse)
+library(lubridate)
+library(wordcloud)
+library(tm)
+library(memoise)
+library(imputeTS)
+```
+
+```{r}
+client_test<- read_csv("word_all_client_questions.csv") %>%
+  filter(StateAbbr== "US")
+
+# choice_type<-client %>% 
+#   select(2) %>% 
+#   names()
+# 
+# class(choice_type)
+
+
+```
+
+
+```{r}
+ wordcloud(client_test$word,             # column of words
+          client_test$n,                # column of frequencies
+          scale=c(5,0.2),                 # range of font sizes of words
+          min.freq = 2,                   # minimum word frequency to show
+          max.words=200,                  # show the 200 most frequent words
+          #random.order=FALSE,             # position the most popular words first
+          colors=brewer.pal(8, "Dark2"))  # Color palette
+```
+
