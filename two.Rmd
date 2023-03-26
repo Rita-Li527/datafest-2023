@@ -1,0 +1,318 @@
+---
+title: "Untitled"
+author: "Rita Li"
+date: "2023-03-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### CODE HERE !!!!
+
+```{r}
+full <- read_csv("frequency_differ_words.csv")
+
+full %>% 
+  filter(StateAbbr == "CA") %>% # here is filter state!
+  mutate(word = fct_reorder(word, diff)) %>% 
+  ggplot(aes(diff, word, fill = diff > 0)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "Sentiment value * number of occurrences",
+       y = "Words preceded by \"not\"")+
+  theme_minimal()
+```
+
+
+```{r}
+cliet <- read_csv("word_all_client_questions.csv")
+attor <- read_csv("word_all_attorney_respond.csv")
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(janeaustenr)
+library(tidytext)
+library(forcats)
+library(tidyr)
+
+library(stringr)
+library(textshape)
+library(lexicon)
+library(textclean)
+library(hunspell)
+
+library(ggplot2)
+library(ggthemes)
+```
+
+```{r}
+States <- cliet %>% count(StateAbbr)
+
+state <- States$StateAbbr
+
+client <- cliet %>% 
+  unique() %>% 
+  group_by(StateAbbr,word) %>% 
+  summarise(n = sum(n), .groups = "drop") %>%
+  unique() %>% 
+  filter(!str_detect(word,"ˆ"),
+         !str_detect(word,"â")) %>% 
+  filter(hunspell_check(word)) %>% 
+  filter(nchar(word)>3) 
+  #pivot_wider(names_from = StateAbbr, values_from = n) %>% 
+  #mutate(sumVar = rowSums(.[2:40],na.rm=TRUE)) %>% 
+  #filter(sumVar > 20) %>% 
+  #select(-sumVar) %>% 
+  # mutate(word = replace_misspelling(word))
+  #pivot_longer(cols = !word,names_to = "StateAbbr", values_to = "n", values_drop_na = TRUE) %>% 
+  bind_tf_idf(word, StateAbbr, n) %>% 
+  group_by(StateAbbr) %>%
+  slice_max(tf_idf, n = 15)
+  
+  
+attorney <- attor %>% 
+  unique() %>% 
+  group_by(StateAbbr,word) %>% 
+  summarise(n = sum(n), .groups = "drop") %>%
+  unique() %>% 
+  filter(!str_detect(word,"ˆ"),
+         !str_detect(word,"â")) %>% 
+  filter(hunspell_check(word)) %>% 
+  filter(nchar(word)>3)
+
+
+  bind_tf_idf(word, StateAbbr, n) %>% 
+  group_by(StateAbbr) %>%
+  slice_max(tf_idf, n = 15)
+```
+
+```{r}
+attor %>% 
+  filter(word == "abandon")
+full <- attorney %>% 
+  mutate(law = n) %>% 
+  select(-n) %>% 
+  full_join(client, by = c("StateAbbr","word")) %>% 
+  mutate(client = n) %>% 
+  select(-n)
+
+```
+
+
+```{r}
+full %>% 
+  pivot_longer(cols = `law`:`client`, names_to = "who", values_to = "count") %>% 
+  mutate(book = paste(StateAbbr, who, sep = "-")) %>% 
+  mutate(count = ifelse(is.na(count),0,count)) %>% 
+  filter(count > 10) %>% 
+  bind_tf_idf(term=word, document=book, n=count) %>% 
+  group_by(book) %>%
+  slice_max(tf_idf, n = 15)
+```
+
+```{r}
+a <- full %>% 
+  mutate(diff = law - client,
+         tot = law + client,
+         law_adj = law/tot,
+         client_adj = -client/tot) %>% 
+  group_by(StateAbbr) %>% 
+  slice_max(diff/tot, n = 10)
+
+c <- full %>% 
+  mutate(diff = law - client,
+         tot = law + client,
+         law_adj = law/tot,
+         client_adj = -client/tot) %>% 
+  group_by(StateAbbr) %>% 
+  slice_max(-diff/tot, n = 10)
+
+
+frequency_differ_words <- rbind(a,c)
+
+write_csv(frequency_differ_words, file = "frequency_differ_words.csv")
+
+
+rbind(a,c) %>% 
+  filter(StateAbbr == "CA") %>% 
+  mutate(word = fct_reorder(word, diff)) %>% 
+  ggplot(aes(diff, word, fill = diff > 0)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "Sentiment value * number of occurrences",
+       y = "Words preceded by \"not\"")+
+  theme_minimal()
+```
+
+
+
+
+
+  ggplot() +
+  geom_segment( aes(x=word, xend=word, y=law_adj, yend=client_adj), color="grey") +
+  geom_point( aes(x=word, y=law_adj), color=rgb(0.2,0.7,0.1,0.5), size=3 ) +
+  geom_point( aes(x=word, y=client_adj), color=rgb(0.7,0.2,0.1,0.5), size=3 ) +
+  coord_flip()+
+  theme_minimal()+
+  theme(
+    legend.position = "none",
+  ) +
+  xlab("") +
+  ylab("Value of Y")
+
+
+library(ggplot2)
+
+not_words %>%
+  mutate(contribution = n * value) %>%
+  arrange(desc(abs(contribution))) %>%
+  head(20) %>%
+  mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(n * value, word2, fill = n * value > 0)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "Sentiment value * number of occurrences",
+       y = "Words preceded by \"not\"")
+
+```
+```{r}
+client <- cliet %>% 
+    filter(StateAbbr == "US") %>% 
+    mutate(word = replace_misspelling(word)) %>% 
+    group_by(word) %>% 
+    summarise(n = sum(n), StateAbbr, .groups = "drop") %>% 
+    unique()
+
+for(s in state){
+  part <- cliet %>% 
+    filter(StateAbbr == s) %>% 
+    mutate(word = replace_misspelling(word)) %>% 
+    group_by(word) %>% 
+    summarise(n = sum(n), StateAbbr, .groups = "drop") %>% 
+    unique()
+  
+  print(s)
+  
+  client <- rbind(client,part)
+}
+
+```
+
+```{r}
+cliet_tf_idf <- cliet %>%
+  mutate(word = replace_misspelling(word))
+  bind_tf_idf(word, StateAbbr, n)
+
+cliet_tf_idf%>%
+  group_by(StateAbbr) %>%
+  slice_max(tf_idf, n = 15) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = StateAbbr)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~StateAbbr, ncol = 8, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+```
+
+```{r}
+cliet %>% 
+  group_by(StateAbbr) %>% 
+  mutate(total = sum(n)) %>% 
+  ggplot(aes(n/total, fill = StateAbbr)) +
+  geom_histogram(show.legend = FALSE) +
+  xlim(NA, 0.0009) +
+  facet_wrap(~StateAbbr, ncol = 8, scales = "free_y")
+```
+
+```{r}
+attor %>% 
+  group_by(StateAbbr) %>% 
+  mutate(total = sum(n)) %>% 
+  ggplot(aes(n/total, fill = StateAbbr)) +
+  geom_histogram(show.legend = FALSE) +
+  xlim(NA, 0.0009) +
+  facet_wrap(~StateAbbr, ncol = 8, scales = "free_y")
+```
+
+
+```{r}
+cliet %>% 
+  mutate(total = sum(n)) %>% 
+  group_by(word) %>% 
+  summarise(n=sum(n),total) %>% 
+  unique() %>% 
+  ggplot(aes(n/total)) +
+  geom_histogram(show.legend = FALSE, bins = 50) +
+  xlim(NA, 0.00001)
+
+attor %>% 
+  mutate(total = sum(n)) %>% 
+  group_by(word) %>% 
+  summarise(n=sum(n),total) %>% 
+  unique() %>% 
+  ggplot(aes(n/total)) +
+  geom_histogram(show.legend = FALSE, bins = 50) +
+  xlim(NA, 0.00001)
+```
+
+
+
+
+```{r}
+library(textshape)
+library(lexicon)
+library(textclean)
+
+replace_misspelling("aattorney attorney")
+
+
+attor %>% 
+  mutate(word = replace_misspelling(word)) %>% 
+  group_by(word) %>% 
+  summarise(n=sum(n),.groups = "drop")
+```
+
+list  <- AL
+AR
+AZ
+CA
+CT
+FL
+GA
+HI
+IA
+ID
+IL
+IN
+KS
+LA
+MA
+MD
+ME
+MI
+MO
+MS
+NC
+ND
+NE
+NH
+NJ
+NM
+NY
+OK
+PA
+SC
+SD
+TN
+TX
+US
+UT
+VA
+VI
+VT
+WA
+WI
+WV
+WY
+
+```
