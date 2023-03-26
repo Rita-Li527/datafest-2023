@@ -20,6 +20,8 @@ client<- read_csv("word_all_client_questions.csv")
 
 lawyer<- read_csv("word_all_attorney_respond.csv")
 
+full <- read_csv("frequency_differ_words.csv")
+
 #get the choice for the drop down list
 
 
@@ -33,7 +35,6 @@ ui <- dashboardPage(
   dashboardSidebar(#add sidebar menu
     sidebarMenu(
       menuItem("Word Cloud", tabName = "word_cloud", icon = icon("tree")),
-      menuItem("Other Plots", tabName = "other_plots", icon = icon("car")),
       menuItem("Description", tabName = "Description", icon = icon("bookmark"))
     )),
   dashboardBody(#Add tab Item
@@ -45,7 +46,8 @@ ui <- dashboardPage(
               box(
                 selectInput("selection", "Choose a state:",
                             choices =c(unique(client$StateAbbr))),
-                width = 8,
+                width = 4,
+        
                 sliderInput(
                   "max",
                   "Maximum Number of Words:",
@@ -61,20 +63,34 @@ ui <- dashboardPage(
                   value = 15
                 )
               ),
+            box(plotOutput("frequency_plot"), width= 8),
             box(title=textOutput('title_client'),plotOutput("word_cloud_plot_client"), width= 6),
             box(title=textOutput('title_lawyer'),plotOutput("word_cloud_plot_lawyer"), width= 6)
      
       )), 
-      tabItem("other_plots",
-              fluidPage(h1("Cars"),
-                        # add data table item
-                        dataTableOutput("carstable")
-              )),
       tabItem("Description",
               h2("Research Question", style = "font-family: 'times'; font-si20pt"),
            
               tags$li("What is the difference between the language used by the client and the lawyer? ", style = "color:blue"), 
-              tags$li("How can we help the lawyer use words that are more similar to those used by the client to facilitate more efficient communication?", style = "color:blue")
+              tags$li("How can we help the lawyer use words that are more similar to those used by the client to facilitate more efficient communication?", style = "color:blue"),
+              h2("Plot Analysis & Key Findings", style = "font-family: 'times'; font-si20pt"),
+              p("Using word cloud visualizations, we can observe that there are variations in the emphasis and needs of clients across different states. Additionally, 
+              the language used by lawyers tends to be more general than the language used by their clients. For example, in Alaska, clients may refer to specific family members such as their daughters or sons, 
+              while lawyers prefer to use more generic terms such as 'parent,' 'family,' or 'child'.", style = "font-family: 'times'; font-si22pt"),
+              
+              p("In addition to word cloud visualizations, we have incorporated a comparative frequency 
+              chart into our Shiny app. The blue color indicates words that are frequently used by 
+              lawyers but are seldom used by clients. On the other hand, the red color 
+                represents words that are commonly used by clients but are rarely used by lawyers.",
+                style = "font-family: 'times'; font-si22pt"),
+              p("This summary provides lawyers with valuable insights as they can prioritize understanding 
+              the blue-colored words, which may be technical terms that the general public is 
+              not familiar with. If lawyers use such terms, 
+                they may need to explain them to ensure clients comprehend their meaning.",
+                style = "font-family: 'times'; font-si22pt"),
+              p("Conversely, the red-colored words showcase the language habits of clients, 
+                which lawyers can incorporate more frequently to make clients feel better understood.",
+                style = "font-family: 'times'; font-si22pt")
      
     ))
 ))
@@ -86,6 +102,9 @@ client_state<-reactive({client %>%
   filter(StateAbbr== input$selection)})
 
 lawyer_state<-reactive({lawyer %>%
+    filter(StateAbbr== input$selection)})
+
+frency_state<-reactive({full %>%
     filter(StateAbbr== input$selection)})
 
 
@@ -123,6 +142,16 @@ output$word_cloud_plot_lawyer <- renderPlot({
 output$title_lawyer <- renderText({"Lawyers' Word Cloud"})
 
 output$title_client <- renderText({"Clients' Word Cloud"})
+output$frequency_plot <- renderPlot({
+  frency_state() %>% mutate(word = fct_reorder(word, diff)) %>% 
+    ggplot(aes(diff, word, fill = diff > 0)) +
+    geom_col() +
+    labs(x = "number of occurrences",
+         y = "",
+         title = "Differences in the Most Frequently Used Words Between Clients & Lawyers",
+         fill = "More frequently \nused by Attorney")+
+    theme_minimal()
+})
 }
 
 # Run the application 
