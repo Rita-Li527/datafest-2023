@@ -33,7 +33,8 @@ ui <- dashboardPage(
   dashboardSidebar(#add sidebar menu
     sidebarMenu(
       menuItem("Word Cloud", tabName = "word_cloud", icon = icon("tree")),
-      menuItem("Other Plots", tabName = "other_plots", icon = icon("car"))
+      menuItem("Other Plots", tabName = "other_plots", icon = icon("car")),
+      menuItem("Description", tabName = "Description", icon = icon("bookmark"))
     )),
   dashboardBody(#Add tab Item
     tabItems(
@@ -68,10 +69,15 @@ ui <- dashboardPage(
               fluidPage(h1("Cars"),
                         # add data table item
                         dataTableOutput("carstable")
-              ))
+              )),
+      tabItem("Description",
+              h2("Research Question", style = "font-family: 'times'; font-si20pt"),
+           
+              tags$li("What is the difference between the language used by the client and the lawyer? ", style = "color:blue"), 
+              tags$li("How can we help the lawyer use words that are more similar to those used by the client to facilitate more efficient communication?", style = "color:blue")
      
     ))
-)
+))
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
