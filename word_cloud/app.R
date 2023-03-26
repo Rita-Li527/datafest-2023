@@ -44,7 +44,7 @@ ui <- dashboardPage(
               box(
                 selectInput("selection", "Choose a state:",
                             choices =c(unique(client$StateAbbr))),
-                width = 4,
+                width = 8,
                 sliderInput(
                   "max",
                   "Maximum Number of Words:",
@@ -60,7 +60,8 @@ ui <- dashboardPage(
                   value = 15
                 )
               ),
-            box(plotOutput("word_cloud_plot"), width= 8)
+            box(title=textOutput('title_client'),plotOutput("word_cloud_plot_client"), width= 6),
+            box(title=textOutput('title_lawyer'),plotOutput("word_cloud_plot_lawyer"), width= 6)
      
       )), 
       tabItem("other_plots",
@@ -78,9 +79,12 @@ server <- function(input, output) {
 client_state<-reactive({client %>%
   filter(StateAbbr== input$selection)})
 
+lawyer_state<-reactive({lawyer %>%
+    filter(StateAbbr== input$selection)})
 
 
-output$word_cloud_plot <- renderPlot({
+
+output$word_cloud_plot_client <- renderPlot({
   wordcloud(
     client_state()$word,
     # column of words
@@ -95,8 +99,24 @@ output$word_cloud_plot <- renderPlot({
     colors = brewer.pal(8, "Dark2")
   )
 })
+output$word_cloud_plot_lawyer <- renderPlot({
+  wordcloud(
+    lawyer_state()$word,
+    # column of words
+    lawyer_state()$n,
+    # column of frequencies
+    scale = c(5, 0.2),
+    # range of font sizes of words
+    min.freq = input$freq,
+    max.words = input$max,
+    # show the 200 most frequent words
+    # random.order=FALSE,             # position the most popular words first
+    colors = brewer.pal(8, "Dark2")
+  )
+})
+output$title_lawyer <- renderText({"Lawyers' Word Cloud"})
 
-
+output$title_client <- renderText({"Clients' Word Cloud"})
 }
 
 # Run the application 
